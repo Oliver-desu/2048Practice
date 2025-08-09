@@ -1,10 +1,13 @@
 # gui_pyqt6.py
 import sys
-from PyQt6.QtWidgets import (
-    QApplication, QWidget, QLabel, QGridLayout, QVBoxLayout, QMessageBox
-)
+
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QAction
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QLabel, QGridLayout, QVBoxLayout, QMessageBox,
+    QMenuBar, QMenu
+)
+
 from game2048 import Game2048  # 你的核心逻辑
 
 CELL_COLORS = {
@@ -33,10 +36,48 @@ class Game2048GUI(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("2048 with PyQt6")
-        self.game = Game2048()
 
+        # 菜单栏
+        self.menu_bar = QMenuBar(self)
+        self.menu_bar.setNativeMenuBar(False)  # macOS下要显示在窗口
         self.v_layout = QVBoxLayout()
         self.setLayout(self.v_layout)
+        self.v_layout.setMenuBar(self.menu_bar)
+
+        game_menu = self.menu_bar.addMenu("游戏")
+
+        start_action = QAction("开始游戏", self)
+        start_action.triggered.connect(self.start_game)
+        game_menu.addAction(start_action)
+
+        practice_menu = QMenu("练习模式", self)
+        game_menu.addMenu(practice_menu)
+
+        # 练习模式占位9个选项
+        self.practice_boards = [
+            ("直通8192", [
+                [0, 0, 0, 2],
+                [0, 0, 0, 4],
+                [0, 0, 0, 0],
+                [8192, 0, 0, 0]
+            ]),
+            ("L型练习", [
+                [0, 0, 0, 2],
+                [0, 0, 0, 4],
+                [-1, -1, -1, 0],
+                [-1, -1, -1, 0]
+            ]),
+            ("爽局", [
+                [64, 32, 16, 2],
+                [512, 256, 128, 2],
+                [4096, 2048, 1024, 4],
+                [32768, 16384, 8192, 8]
+            ]),
+        ]
+        for name, board in self.practice_boards:
+            act = QAction(name, self)
+            act.triggered.connect(lambda checked, b=board: self.start_practice(b))
+            practice_menu.addAction(act)
 
         # 分数标签
         self.score_label = QLabel("分数: 0")
@@ -61,6 +102,17 @@ class Game2048GUI(QWidget):
                 label.setStyleSheet(f"background-color: {bg}; color: {fg}; border-radius: 10px;")
                 self.grid.addWidget(label, r, c)
 
+        # 用 start_game 代替旧写法初始化游戏
+        self.game = None
+        self.start_game()
+
+    def start_game(self):
+        self.game = Game2048()
+        self.update_board()
+
+    def start_practice(self, init_board):
+        # 传入练习初始棋盘，None 表示随机初始化
+        self.game = Game2048(init_board=init_board)
         self.update_board()
 
     def update_board(self):
@@ -101,9 +153,8 @@ class Game2048GUI(QWidget):
         msg.setText("游戏结束！没有可用的移动了。")
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()
-        # 这里可以选择重置游戏
-        self.game = Game2048()
-        self.update_board()
+        # 统一用 start_game 重置
+        self.start_game()
 
 
 if __name__ == "__main__":
